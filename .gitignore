@@ -1,0 +1,17 @@
+# dependencies
+node_modules/
+
+# env
+.env
+.env.local
+
+# DB files
+*.db
+*.sqlite
+*.sqlite3
+
+# OS
+.DS_Store
+
+# Vite
+dist/
