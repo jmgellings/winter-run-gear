@@ -1,5 +1,7 @@
 import express from "express";
 import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
 import { db, getStravaToken, saveStravaToken } from "./db.js";
 import ical from "node-ical";
 import axios from "axios";
@@ -7,14 +9,20 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const FRONTEND_DIST = path.join(__dirname, "../frontend/dist");
+
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-app.get("/", (req, res) => {
+app.get("/api/health", (req, res) => {
   res.send("LayerLog backend is running ❄️🏃‍♂️");
 });
+
+// Serve the built frontend (production only — in dev, Vite serves it on its own port)
+app.use(express.static(FRONTEND_DIST));
 
 // Create a run
 app.post("/runs", (req, res) => {
@@ -524,5 +532,5 @@ function parseRunnaText(text) {
   };
 }
 
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Backend listening on http://localhost:${PORT}`));

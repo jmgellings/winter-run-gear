@@ -3,7 +3,7 @@ import path from "path";
 
 sqlite3.verbose();
 
-const DB_PATH = path.join(process.cwd(), "runs.db");
+const DB_PATH = process.env.DB_PATH || path.join(process.cwd(), "runs.db");
 
 export const db = new sqlite3.Database(DB_PATH);
 
