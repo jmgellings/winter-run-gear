@@ -293,6 +293,92 @@
   color: var(--text-muted);
 }
 
+.run-cards {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.run-card {
+  padding: 12px 14px;
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.run-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.run-card-date {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.intensity-pill {
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.72em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.intensity-easy {
+  background: rgba(52, 199, 89, 0.15);
+  color: #34c759;
+}
+
+.intensity-moderate {
+  background: rgba(255, 159, 10, 0.15);
+  color: #ff9f0a;
+}
+
+.intensity-hard {
+  background: rgba(255, 107, 107, 0.15);
+  color: var(--danger);
+}
+
+.run-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+.run-card-clothing {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.chip-static {
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 0.8em;
+}
+
+.run-card-notes {
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 0.9em;
+  font-style: italic;
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;

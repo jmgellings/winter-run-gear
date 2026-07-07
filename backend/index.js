@@ -382,12 +382,12 @@ app.get("/auth/strava/callback", async (req, res) => {
 // Returns your most recent N Strava activities that are NOT yet logged in our DB
   app.get("/strava/recent", (req, res) => {
     const limit = Math.min(Number(req.query.limit || 5), 10);
-  
-    // Fetch extra so we can still return limit runs after filtering
-    const fetchCount = Math.min(Math.max(limit * 5, 15), 50);  
 
-  // Step 1: ensure we have a token stored (OAuth comes next)
-  getStravaToken(async (err, tokenRow) => {
+    // Fetch extra so we can still return limit runs after filtering
+    const fetchCount = Math.min(Math.max(limit * 5, 15), 50);
+
+  // Step 1: ensure we have a token stored, refreshing it first if it's expired
+  getFreshStravaToken(async (err, tokenRow) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!tokenRow?.access_token) {
       return res.status(401).json({
@@ -404,8 +404,11 @@ app.get("/auth/strava/callback", async (req, res) => {
 
       const activities = Array.isArray(stravaRes.data) ? stravaRes.data : [];
 
-      // Keep only runs (Strava activity type is typically "Run")
-      const runsOnly = activities.filter((a) => a?.type === "Run");
+      // Keep only runs (Strava activity type is typically "Run") from the last 30 days
+      const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      const runsOnly = activities.filter(
+        (a) => a?.type === "Run" && new Date(a.start_date).getTime() >= thirtyDaysAgo
+      );
 
       // Step 3: filter out those already logged in our DB
       const ids = runsOnly.map((a) => String(a.id));
@@ -436,6 +439,37 @@ app.get("/auth/strava/callback", async (req, res) => {
     }
   });
 });
+
+// Like getStravaToken, but refreshes via Strava's OAuth endpoint first if the
+// stored access token is expired (or about to expire within 60s).
+function getFreshStravaToken(cb) {
+  getStravaToken(async (err, tokenRow) => {
+    if (err) return cb(err);
+    if (!tokenRow?.access_token) return cb(null, tokenRow);
+
+    const now = Math.floor(Date.now() / 1000);
+    if (tokenRow.expires_at && tokenRow.expires_at > now + 60) {
+      return cb(null, tokenRow);
+    }
+
+    try {
+      const refreshRes = await axios.post("https://www.strava.com/oauth/token", {
+        client_id: process.env.STRAVA_CLIENT_ID,
+        client_secret: process.env.STRAVA_CLIENT_SECRET,
+        grant_type: "refresh_token",
+        refresh_token: tokenRow.refresh_token
+      });
+
+      const { access_token, refresh_token, expires_at } = refreshRes.data;
+      saveStravaToken({ access_token, refresh_token, expires_at }, (e) => {
+        if (e) return cb(e);
+        cb(null, { access_token, refresh_token, expires_at });
+      });
+    } catch (e) {
+      cb(e);
+    }
+  });
+}
 
 function toEvent(e, start, end) {
   const title = e.summary ?? "";
