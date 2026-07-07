@@ -21,6 +21,7 @@ export default function StravaImport({ onUseActivity }) {
   const [loading, setLoading] = useState(false);
   const [activities, setActivities] = useState([]);
   const [err, setErr] = useState("");
+  const [selectedId, setSelectedId] = useState(null);
 
   async function loadRecent() {
     setErr("");
@@ -41,7 +42,12 @@ export default function StravaImport({ onUseActivity }) {
       setActivities(list);
 
       // auto-select first one if available
-      if (list.length) onUseActivity?.(list[0], { auto: true });
+      if (list.length) {
+        setSelectedId(list[0].id);
+        onUseActivity?.(list[0], { auto: true });
+      } else {
+        setSelectedId(null);
+      }
     } catch (e) {
       setErr(e.message);
     } finally {
@@ -61,8 +67,8 @@ export default function StravaImport({ onUseActivity }) {
   }, []);
 
   return (
-    <div style={{ padding: 12, border: "1px solid #ddd", borderRadius: 12, marginBottom: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+    <div className="card">
+      <div className="card-header">
         <h2 style={{ margin: 0 }}>Recent Runs (Strava)</h2>
         <div style={{ display: "flex", gap: 8 }}>
           <button type="button" onClick={connectStrava}>Connect Strava</button>
@@ -72,32 +78,38 @@ export default function StravaImport({ onUseActivity }) {
         </div>
       </div>
 
-      {err ? <div style={{ color: "crimson", marginTop: 8 }}>{err}</div> : null}
+      {err ? <div className="error-text" style={{ marginTop: 8 }}>{err}</div> : null}
 
       {!err && activities.length === 0 ? (
-        <div style={{ marginTop: 10, opacity: 0.85 }}>All recent runs recorded!</div>
+        <div className="muted" style={{ marginTop: 10 }}>All recent runs recorded!</div>
       ) : null}
 
       {activities.length ? (
-        <ul style={{ marginTop: 10 }}>
+        <ul className="run-list" style={{ marginTop: 10 }}>
           {activities.map((a) => {
             const miles = metersToMiles(a.distance);
             const durationMin = a.moving_time != null ? Math.round(a.moving_time / 60) : null;
+            const selected = a.id === selectedId;
 
             return (
-              <li key={a.id} style={{ marginBottom: 10 }}>
-                <div><strong>{a.name || "Run"}</strong></div>
-                <div style={{ opacity: 0.85 }}>
-                  {prettyWhen(a.start_date_local)} •{" "}
-                  {miles != null ? `${miles.toFixed(2)} mi` : "—"} •{" "}
-                  {durationMin != null ? `${durationMin} min` : "—"}
+              <li key={a.id} className={selected ? "selected" : ""}>
+                <div>
+                  <div><strong>{a.name || "Run"}</strong></div>
+                  <div className="muted">
+                    {prettyWhen(a.start_date_local)} •{" "}
+                    {miles != null ? `${miles.toFixed(2)} mi` : "—"} •{" "}
+                    {durationMin != null ? `${durationMin} min` : "—"}
+                  </div>
                 </div>
                 <button
                   type="button"
-                  onClick={() => onUseActivity?.(a, { auto: false })}
-                  style={{ marginTop: 6 }}
+                  className={`select-btn${selected ? " btn-primary" : ""}`}
+                  onClick={() => {
+                    setSelectedId(a.id);
+                    onUseActivity?.(a, { auto: false });
+                  }}
                 >
-                  Use this run
+                  {selected ? "Selected" : "Use"}
                 </button>
               </li>
             );

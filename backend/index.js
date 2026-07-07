@@ -4,7 +4,6 @@ import { db, getStravaToken, saveStravaToken } from "./db.js";
 import ical from "node-ical";
 import axios from "axios";
 import dotenv from "dotenv";
-import https from "https";
 
 dotenv.config();
 
@@ -14,13 +13,12 @@ app.use(cors());
 app.use(express.json());
 
 app.get("/", (req, res) => {
-  res.send("Winter Run Gear backend is running ❄️🏃‍♂️");
+  res.send("LayerLog backend is running ❄️🏃‍♂️");
 });
 
 // Create a run
 app.post("/runs", (req, res) => {
   const {
-    planned_run_id,
     date,
     distance,
     intensity,
@@ -29,16 +27,16 @@ app.post("/runs", (req, res) => {
     sunny,
     comfort_rating,
     notes,
-    clothing = []
+    clothing = [],
+    strava_activity_id
   } = req.body;
 
   if (!date) return res.status(400).json({ error: "date is required" });
 
   db.run(
-    `INSERT INTO runs (planned_run_id, date, distance, intensity, temperature, wind, sunny, comfort_rating, notes)
+    `INSERT INTO runs (date, distance, intensity, temperature, wind, sunny, comfort_rating, notes, strava_activity_id)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      planned_run_id ?? null,
       date,
       distance,
       intensity,
@@ -46,26 +44,22 @@ app.post("/runs", (req, res) => {
       wind,
       sunny ? 1 : 0,
       comfort_rating,
-      notes
+      notes,
+      strava_activity_id ?? null
     ],
     function (err) {
       if (err) return res.status(500).json({ error: err.message });
-  
+
       const runId = this.lastID;
-  
+
       // Save clothing items
       const stmt = db.prepare(`INSERT INTO run_clothing (run_id, item) VALUES (?, ?)`);
       for (const item of clothing) stmt.run(runId, item);
       stmt.finalize();
-  
-      // ✅ If this run was linked to a planned run, mark that planned run completed
-      if (planned_run_id) {
-        db.run(`UPDATE planned_runs SET is_completed = 1 WHERE id = ?`, [planned_run_id]);
-      }
-  
+
       res.json({ id: runId });
     }
-  );  
+  );
 });
 
 // List runs (most recent first)
@@ -226,62 +220,6 @@ app.post("/runna/upcoming", async (req, res) => {
   }
 });
 
-app.post("/planned/import", async (req, res) => {
-  try {
-    const { source = "runna", events = [] } = req.body;
-    if (!Array.isArray(events)) return res.status(400).json({ error: "events must be an array" });
-
-    let insertedOrUpdated = 0;
-
-    for (const e of events) {
-      const startDate = new Date(e.start).toISOString().slice(0, 10);
-
-      await dbRun(
-        `INSERT INTO planned_runs
-          (source, source_uid, start_date, title, description, distance_mi, intensity, duration_text)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(source, source_uid) DO UPDATE SET
-           start_date=excluded.start_date,
-           title=excluded.title,
-           description=excluded.description,
-           distance_mi=excluded.distance_mi,
-           intensity=excluded.intensity,
-           duration_text=excluded.duration_text`,
-        [
-          source,
-          e.uid,
-          startDate,
-          e.title ?? "",
-          e.description ?? "",
-          e.parsed?.distanceMi ?? null,
-          e.parsed?.intensity ?? null,
-          e.durationText ?? null
-        ]
-      );
-
-      insertedOrUpdated++;
-    }
-
-    res.json({ count: insertedOrUpdated });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get("/planned/upcoming", async (req, res) => {
-  try {
-    const rows = await dbAll(
-      `SELECT * FROM planned_runs
-       WHERE is_completed = 0
-       ORDER BY start_date ASC
-       LIMIT 5`
-    );
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // Weather for a location, returning the hourly forecast at/after targetTime
 // POST /weather/hourly
 // body: { lat: number, lon: number, targetTimeISO: "2026-01-23T14:00" }
@@ -357,7 +295,7 @@ app.put("/runs/:id", (req, res) => {
       r.sunny ? 1 : 0,
       r.comfort_rating,
       r.notes ?? "",
-      r.strava_activity_id || null
+      id
     ],
     function (err) {
       if (err) return res.status(500).json({ error: err.message });
@@ -550,21 +488,6 @@ function parseRunnaText(text) {
     distanceMi, // might be null if not found
     intensity
   };
-}
-
-function dbRun(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function (err) {
-      if (err) reject(err);
-      else resolve(this);
-    });
-  });
-}
-
-function dbAll(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
-  });
 }
 
 const PORT = 3001;

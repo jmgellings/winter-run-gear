@@ -3,14 +3,15 @@ import { useEffect, useState } from "react";
 
 export default function RunnaImport({
   onUseWorkout,
-  limit = 5,
+  limit = 3,
   hideUrlInput = false,
-  title = "Next 5 Workouts (Runna)"
+  title = "Next 3 Workouts (Runna)"
 }) {
   const [icsUrl, setIcsUrl] = useState(localStorage.getItem("runnaIcsUrl") || "");
   const [loading, setLoading] = useState(false);
   const [events, setEvents] = useState([]);
   const [err, setErr] = useState("");
+  const [selectedIdx, setSelectedIdx] = useState(null);
 
   useEffect(() => {
     if (icsUrl) loadUpcoming();
@@ -36,7 +37,12 @@ export default function RunnaImport({
       setEvents(upcoming);
 
       // auto-select soonest
-      if (upcoming.length) onUseWorkout?.(upcoming[0], { auto: true });
+      if (upcoming.length) {
+        setSelectedIdx(0);
+        onUseWorkout?.(upcoming[0], { auto: true });
+      } else {
+        setSelectedIdx(null);
+      }
 
     } catch (e) {
       setErr(e.message);
@@ -52,8 +58,8 @@ export default function RunnaImport({
   }
 
   return (
-    <div style={{ padding: 12, border: "1px solid #ddd", borderRadius: 12, marginBottom: 16 }}>
-      <h2>{title}</h2>
+    <div>
+      <h3 className="subsection-heading">{title}</h3>
 
       {!hideUrlInput ? (
         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
@@ -73,18 +79,15 @@ export default function RunnaImport({
             {loading ? "Loading..." : "Refresh Runna"}
           </button>
           {!icsUrl ? (
-            <div style={{ opacity: 0.8 }}>
-              No Runna ICS URL saved yet — load it once on the Plan tab.
-            </div>
+            <div className="muted">No Runna ICS URL saved yet — load it once on the Plan tab.</div>
           ) : null}
         </div>
       )}
 
-
-      {err ? <div style={{ color: "crimson" }}>{err}</div> : null}
+      {err ? <div className="error-text">{err}</div> : null}
 
       {events.length ? (
-        <ul style={{ marginTop: 10 }}>
+        <ul className="run-list" style={{ marginTop: 10 }}>
           {events.map((e, idx) => {
             const start = new Date(e.start);
             const label = start.toLocaleDateString(undefined, {
@@ -93,41 +96,35 @@ export default function RunnaImport({
               day: "numeric"
             });
             const duration = extractDuration(e.description);
-            
+            const meta = [label, duration].filter(Boolean).join(" • ");
+
+            const selected = idx === selectedIdx;
+
             return (
-              <li key={`${e.title}-${idx}`} style={{ marginBottom: 10 }}>
-                <div><strong>{e.title}</strong></div>
-            
-                <div style={{ opacity: 0.8 }}>{label}</div>
-            
-                {e.parsed?.distanceMi ? (
-                  <div style={{ opacity: 0.8 }}>
-                    Parsed: {e.parsed.distanceMi.toFixed(1)} mi, {e.parsed.intensity}
-                  </div>
-                ) : (
-                  <div style={{ opacity: 0.8 }}>
-                    Parsed intensity: {e.parsed?.intensity || "easy"} (distance not found)
-                  </div>
-                )}
-            
-                {duration ? (
-                  <div style={{ opacity: 0.8 }}>Duration: {duration}</div>
-                ) : null}
-            
-                <button
-                  type="button"
-                  onClick={() => onUseWorkout(e, { auto: false })}
-                  style={{ marginTop: 6 }}
-                >
-                  Use this workout
-                </button>
+              <li key={`${e.title}-${idx}`} className={selected ? "selected" : ""}>
+                <div>
+                  <div><strong>{e.title}</strong></div>
+                  <div className="muted">{meta}</div>
+                </div>
+                <div className="workout-action">
+                  <span className="intensity-tag">{e.parsed?.intensity || "easy"}</span>
+                  <button
+                    type="button"
+                    className={selected ? "btn-primary" : ""}
+                    onClick={() => {
+                      setSelectedIdx(idx);
+                      onUseWorkout(e, { auto: false });
+                    }}
+                  >
+                    {selected ? "Selected" : "Use"}
+                  </button>
+                </div>
               </li>
             );
-            
           })}
         </ul>
       ) : (
-        <div style={{ marginTop: 8, opacity: 0.8 }}>
+        <div className="muted" style={{ marginTop: 8 }}>
           Paste your Runna calendar ICS URL and click Load.
         </div>
       )}
