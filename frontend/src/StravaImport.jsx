@@ -17,7 +17,7 @@ function prettyWhen(iso) {
   });
 }
 
-export default function StravaImport({ onUseActivity }) {
+export default function StravaImport({ onUseActivity, refreshSignal }) {
   const [loading, setLoading] = useState(false);
   const [activities, setActivities] = useState([]);
   const [err, setErr] = useState("");
@@ -61,10 +61,10 @@ export default function StravaImport({ onUseActivity }) {
   }
 
   useEffect(() => {
-    // auto-load on mount
+    // auto-load on mount, and again whenever a run is saved elsewhere
     loadRecent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refreshSignal]);
 
   return (
     <div className="card">

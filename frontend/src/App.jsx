@@ -34,6 +34,16 @@ function formatForecastHour(isoLike) {
   });
 }
 
+function formatRunDate(dateStr) {
+  if (!dateStr) return "";
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric"
+  });
+}
+
 // The fields for an actual logged run: what you wore, how it felt. Shared by the
 // Log tab's create form and the edit modal. When `hideDetails` is set (Log tab only,
 // once a Strava run has been selected), the auto-filled date/distance/conditions rows
@@ -178,29 +188,33 @@ export default function App() {
   // Log tab: what did I actually wear, and how did it feel?
   const [logSource, setLogSource] = useState(null); // which Strava activity this came from
   const [showLogDetails, setShowLogDetails] = useState(false);
-  const [form, setForm] = useState({
-    date: new Date().toISOString().slice(0, 10),
-    distance: 3,
-    intensity: "easy",
-    temperature: 40,
-    wind: 5,
-    sunny: false,
-    comfort_rating: 3,
-    notes: "",
-    clothing: [],
-    strava_activity_id: null
-  });
+  const [stravaRefreshTick, setStravaRefreshTick] = useState(0);
+
+  function defaultLogForm() {
+    return {
+      date: new Date().toISOString().slice(0, 10),
+      distance: 3,
+      intensity: "easy",
+      temperature: 40,
+      wind: 5,
+      sunny: false,
+      comfort_rating: 3,
+      notes: "",
+      clothing: [],
+      strava_activity_id: null
+    };
+  }
+
+  const [form, setForm] = useState(defaultLogForm);
 
   async function fetchWeather() {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
-        alert("Geolocation not supported in this browser.");
         reject(new Error("Geolocation not supported"));
         return;
       }
 
       if (!planForm.date || !planForm.time) {
-        alert("Pick a date and time first.");
         reject(new Error("Missing date/time"));
         return;
       }
@@ -228,7 +242,6 @@ export default function App() {
 
             const hourly = data?.hourly;
             if (!hourly?.time?.length) {
-              alert("No hourly data returned");
               reject(new Error("No hourly data returned"));
               return;
             }
@@ -261,12 +274,10 @@ export default function App() {
 
             resolve();
           } catch (e) {
-            alert(e.message || "Weather fetch failed");
             reject(e);
           }
         },
         (err) => {
-          alert(err.message || "Unable to get location");
           reject(err);
         },
         { enableHighAccuracy: true, timeout: 10000 }
@@ -292,8 +303,32 @@ export default function App() {
   }
 
   async function oneClickRecommend() {
-    await fetchWeather();
+    try {
+      await fetchWeather();
+    } catch {
+      // fall back to the manually entered temp/wind/sunny values
+    }
     await getRecommendation();
+  }
+
+  // Best-effort: look up actual conditions for a Strava activity's time/place.
+  // Open-Meteo only has reliable data for the last ~2-3 months, so older
+  // activities (or ones missing GPS) just leave temp/wind/sunny untouched.
+  async function fetchWeatherForActivity(a) {
+    const [lat, lon] = a.start_latlng ?? [];
+    if (lat == null || lon == null || !a.start_date_local) return null;
+
+    try {
+      const res = await fetch(`${API_BASE}/weather/hourly`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lat, lon, targetTimeISO: a.start_date_local })
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
   }
 
   async function refreshRuns() {
@@ -310,12 +345,22 @@ export default function App() {
     e.preventDefault();
     setLoading(true);
     try {
-      await fetch(`${API_BASE}/runs`, {
+      const res = await fetch(`${API_BASE}/runs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form)
       });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data?.error || "Failed to save run");
+        return;
+      }
+
       await refreshRuns();
+      setForm(defaultLogForm());
+      setLogSource(null);
+      setShowLogDetails(false);
+      setStravaRefreshTick((t) => t + 1);
       alert("Saved!");
     } finally {
       setLoading(false);
@@ -527,7 +572,8 @@ export default function App() {
       ) : (
         <div>
           <StravaImport
-            onUseActivity={(a, meta) => {
+            refreshSignal={stravaRefreshTick}
+            onUseActivity={async (a, meta) => {
               const date = a.start_date_local
                 ? new Date(a.start_date_local).toISOString().slice(0, 10)
                 : new Date().toISOString().slice(0, 10);
@@ -543,6 +589,16 @@ export default function App() {
 
               setLogSource(a.name || "Run");
               setShowLogDetails(false);
+
+              const weather = await fetchWeatherForActivity(a);
+              if (weather) {
+                setForm((f) => ({
+                  ...f,
+                  temperature: Math.round(weather.temperatureF ?? f.temperature),
+                  wind: Math.round(weather.windMph ?? f.wind),
+                  sunny: Boolean(weather.sunny)
+                }));
+              }
             }}
           />
 
@@ -571,17 +627,40 @@ export default function App() {
             {recentRuns.length === 0 ? (
               <div className="muted">No runs logged yet. Get back out there!</div>
             ) : (
-              <ul className="run-list">
+              <ul className="run-cards">
                 {recentRuns.map((r) => (
-                  <li key={r.id}>
-                    <div>
-                      <strong>{r.date}</strong> — {r.distance} mi — {r.intensity} — {r.temperature}°F — comfort{" "}
-                      {r.comfort_rating} — {r.clothing?.join(", ") || "no clothing"}
-                      {r.notes ? ` — (${r.notes})` : ""}
+                  <li key={r.id} className="run-card">
+                    <div className="run-card-header">
+                      <div className="run-card-date">
+                        {formatRunDate(r.date)}
+                        <span className={`intensity-pill intensity-${r.intensity}`}>{r.intensity}</span>
+                      </div>
+                      <button type="button" className="link-button" onClick={() => openEditModal(r)}>
+                        Edit
+                      </button>
                     </div>
-                    <button type="button" onClick={() => openEditModal(r)}>
-                      Edit
-                    </button>
+
+                    <div className="run-card-meta">
+                      <span>{r.distance != null ? `${r.distance} mi` : "— mi"}</span>
+                      <span>
+                        {r.temperature}°F
+                        {r.wind ? ` • ${r.wind} mph` : ""}
+                        {r.sunny ? " • ☀️" : ""}
+                      </span>
+                      <span>comfort {r.comfort_rating}/5</span>
+                    </div>
+
+                    {r.clothing?.length ? (
+                      <div className="run-card-clothing">
+                        {r.clothing.map((item) => (
+                          <span key={item} className="chip-static">
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {r.notes ? <div className="run-card-notes">"{r.notes}"</div> : null}
                   </li>
                 ))}
               </ul>

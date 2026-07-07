@@ -38,21 +38,27 @@ db.serialize(() => {
       console.error("PRAGMA table_info(runs) failed:", err);
       return;
     }
+
+    const createIndex = () => {
+      db.run(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_runs_strava_activity_id ON runs(strava_activity_id)",
+        (e) => {
+          if (e) console.error("Failed to create strava index:", e);
+        }
+      );
+    };
+
     const has = (cols || []).some((c) => c.name === "strava_activity_id");
     if (!has) {
       db.run("ALTER TABLE runs ADD COLUMN strava_activity_id TEXT", (e) => {
         if (e) console.error("Failed to add strava_activity_id:", e);
         else console.log("Added runs.strava_activity_id");
+        createIndex();
       });
+    } else {
+      createIndex();
     }
   });
-
-  db.run(
-    "CREATE UNIQUE INDEX IF NOT EXISTS idx_runs_strava_activity_id ON runs(strava_activity_id)",
-    (e) => {
-      if (e) console.error("Failed to create strava index:", e);
-    }
-  );
 
   db.run(
     `CREATE TABLE IF NOT EXISTS strava_tokens (
