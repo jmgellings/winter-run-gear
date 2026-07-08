@@ -468,7 +468,11 @@ export default function App() {
     <div className="app-container">
       <div className="app-header">
         <h1>LayerLog</h1>
-        <span className="app-tagline">plan it, run it, log it</span>
+        <span className="app-tagline">
+          Dress right.
+          <br />
+          Run happy.
+        </span>
       </div>
 
       <div className="tabs">
@@ -504,7 +508,7 @@ export default function App() {
 
             <hr className="section-divider" />
 
-            <div className="form-grid">
+            <div className="form-grid form-grid-nowrap">
               <label className="field">
                 Date
                 <input

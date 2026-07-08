@@ -8,7 +8,7 @@
 
 .app-header {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 20px;
 }
@@ -149,7 +149,7 @@
 
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
 }
 
@@ -159,7 +159,11 @@
 
 @media (max-width: 480px) {
   .form-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .form-grid-nowrap {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 
@@ -169,11 +173,14 @@
   gap: 4px;
   font-size: 0.85em;
   color: var(--text-muted);
+  min-width: 0;
 }
 
 .field input,
 .field select {
   width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   color: var(--text);
   font-size: 1rem;
 }
@@ -323,14 +330,6 @@
 .run-list li .select-btn {
   min-width: 108px;
   flex-shrink: 0;
-}
-
-.intensity-tag {
-  font-size: 0.72em;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
 }
 
 .run-cards {
