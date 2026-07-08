@@ -407,28 +407,17 @@ export default function App() {
 
   const planDetailFields = (
     <>
-      <div className="form-grid">
-        <label className="field">
-          Date
-          <input
-            type="date"
-            value={planForm.date}
-            onChange={(e) => setPlanForm({ ...planForm, date: e.target.value })}
-          />
-        </label>
-
-        <label className="field">
-          Distance (mi)
-          <input
-            type="number"
-            step="0.1"
-            value={planForm.distance ?? ""}
-            onChange={(e) =>
-              setPlanForm({ ...planForm, distance: e.target.value === "" ? null : Number(e.target.value) })
-            }
-          />
-        </label>
-      </div>
+      <label className="field">
+        Distance (mi)
+        <input
+          type="number"
+          step="0.1"
+          value={planForm.distance ?? ""}
+          onChange={(e) =>
+            setPlanForm({ ...planForm, distance: e.target.value === "" ? null : Number(e.target.value) })
+          }
+        />
+      </label>
 
       <div className="form-grid">
         <label className="field">
@@ -515,14 +504,25 @@ export default function App() {
 
             <hr className="section-divider" />
 
-            <label className="field">
-              Time
-              <input
-                type="time"
-                value={planForm.time}
-                onChange={(e) => setPlanForm({ ...planForm, time: e.target.value })}
-              />
-            </label>
+            <div className="form-grid">
+              <label className="field">
+                Date
+                <input
+                  type="date"
+                  value={planForm.date}
+                  onChange={(e) => setPlanForm({ ...planForm, date: e.target.value })}
+                />
+              </label>
+
+              <label className="field">
+                Time
+                <input
+                  type="time"
+                  value={planForm.time}
+                  onChange={(e) => setPlanForm({ ...planForm, time: e.target.value })}
+                />
+              </label>
+            </div>
 
             {planSource && (
               <button
@@ -536,7 +536,12 @@ export default function App() {
 
             {planSource && showPlanDetails && planDetailFields}
 
-            <button className="btn-primary" type="button" onClick={oneClickRecommend} style={{ width: "100%" }}>
+            <button
+              className="btn-primary"
+              type="button"
+              onClick={oneClickRecommend}
+              style={{ width: "100%", marginTop: 14 }}
+            >
               Get Recommendation
             </button>
 

@@ -5,16 +5,25 @@ function metersToMiles(m) {
   return m == null ? null : m / 1609.344;
 }
 
-function prettyWhen(iso) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit"
-  });
+// Strava's start_date_local is already local wall-clock time, but it's
+// suffixed with "Z" as if it were UTC. Parsing it with `new Date()` and
+// letting toLocaleString() convert to the browser's timezone double-applies
+// an offset (e.g. a 6:47 AM run shows as 2:47 AM in a UTC-4 timezone), so we
+// pull the components out directly instead of treating it as a real instant.
+function prettyWhen(localIso) {
+  if (!localIso) return "";
+  const m = localIso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!m) return "";
+
+  const [, y, mo, d, h, mi] = m.map(Number);
+  const dateForLabel = new Date(y, mo - 1, d);
+  const weekday = dateForLabel.toLocaleDateString(undefined, { weekday: "short" });
+  const month = dateForLabel.toLocaleDateString(undefined, { month: "short" });
+
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  const ampm = h < 12 ? "AM" : "PM";
+
+  return `${weekday}, ${month} ${d}, ${hour12}:${String(mi).padStart(2, "0")} ${ampm}`;
 }
 
 export default function StravaImport({ onUseActivity, refreshSignal }) {
