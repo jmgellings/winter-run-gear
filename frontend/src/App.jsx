@@ -540,14 +540,17 @@ export default function App() {
               Get Recommendation
             </button>
 
-            {weather && (
+            {recommendation && (
               <div className="card-inset">
-                <div className="muted">Forecast hour: {formatForecastHour(weather.chosenTime)}</div>
+                <div className="muted">
+                  {weather ? `Forecast hour: ${formatForecastHour(weather.chosenTime)}` : "Conditions used"}
+                </div>
                 <div className="weather-temp" style={{ marginTop: 4 }}>
-                  {Math.round(weather.temperatureF)}°F
+                  {Math.round(weather ? weather.temperatureF : planForm.temperature)}°F
                 </div>
                 <div className="muted">
-                  wind {Math.round(weather.windMph)} mph • {weather.sunny ? "sunny" : "cloudy/precip"}
+                  wind {Math.round(weather ? weather.windMph : planForm.wind)} mph •{" "}
+                  {(weather ? weather.sunny : planForm.sunny) ? "sunny" : "cloudy/precip"}
                 </div>
               </div>
             )}
