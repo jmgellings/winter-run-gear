@@ -167,15 +167,28 @@
   }
 
   /* iOS Safari's native date/time pickers don't reliably respect
-     width:100% -- they can paint wider than their box regardless of
-     percentage-based sizing, which clips or overlaps neighbors. An
-     explicit fixed width (not a percentage) is more reliably honored. */
-  .form-grid-nowrap input[type="date"],
-  .form-grid-nowrap input[type="time"] {
-    width: 145px;
+     width:100% -- they paint at their own preferred size regardless of
+     percentage-based sizing (even standalone, with plenty of room), which
+     clips or overlaps neighbors. An explicit fixed width is more reliably
+     honored than a percentage, whether the field shares a row or not. */
+  input[type="date"],
+  input[type="time"] {
     padding-left: 6px;
     padding-right: 6px;
     font-size: 0.85rem;
+  }
+
+  /* Real budget per column at a 375px viewport: 375 - 32 (.app-container
+     padding) - 32 (.card padding) - 10 (grid gap) = 301, /2 = ~150px. Stay
+     just under that so it's as close as possible to Distance/Intensity's
+     full-column width without overflowing. */
+  .form-grid-nowrap input[type="date"],
+  .form-grid-nowrap input[type="time"] {
+    width: 148px;
+  }
+
+  .field-date-full input[type="date"] {
+    width: 220px;
   }
 }
 
