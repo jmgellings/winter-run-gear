@@ -57,7 +57,7 @@ function RunFields({ value, onChange }) {
 
   return (
     <>
-      <label className="field">
+      <label className="field field-date-full">
         Date
         <input type="date" value={value.date} onChange={(e) => set({ date: e.target.value })} />
       </label>
