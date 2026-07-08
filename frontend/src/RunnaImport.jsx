@@ -89,11 +89,17 @@ export default function RunnaImport({
       {events.length ? (
         <ul className="run-list" style={{ marginTop: 10 }}>
           {events.map((e, idx) => {
+            // Runna's calendar feed uses date-only DTSTART values (e.g.
+            // "20260710", no time/zone), which node-ical represents as UTC
+            // midnight. Formatting in the viewer's local zone can roll that
+            // back to the previous day west of UTC, so format in UTC to
+            // recover the calendar date Runna actually meant.
             const start = new Date(e.start);
             const label = start.toLocaleDateString(undefined, {
               weekday: "short",
               month: "short",
-              day: "numeric"
+              day: "numeric",
+              timeZone: "UTC"
             });
             const duration = extractDuration(e.description);
             const meta = [label, duration].filter(Boolean).join(" • ");
