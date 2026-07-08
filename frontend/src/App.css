@@ -184,6 +184,10 @@
   font-size: 0.85em;
   color: var(--text-muted);
   min-width: 0;
+  /* Some browsers' native date/time pickers ignore width:100% on their
+     internal rendering and render wider than their box regardless of
+     container size. overflow:hidden guarantees containment even then. */
+  overflow: hidden;
 }
 
 .field input,
