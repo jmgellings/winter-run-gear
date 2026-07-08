@@ -161,6 +161,10 @@
   .form-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .form-grid-nowrap {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
 }
 
 .field {

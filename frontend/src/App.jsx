@@ -504,7 +504,7 @@ export default function App() {
 
             <hr className="section-divider" />
 
-            <div className="form-grid">
+            <div className="form-grid form-grid-nowrap">
               <label className="field">
                 Date
                 <input
