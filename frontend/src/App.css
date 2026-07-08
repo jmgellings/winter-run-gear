@@ -149,7 +149,7 @@
 
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
 }
 
@@ -159,7 +159,7 @@
 
 @media (max-width: 480px) {
   .form-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -169,11 +169,14 @@
   gap: 4px;
   font-size: 0.85em;
   color: var(--text-muted);
+  min-width: 0;
 }
 
 .field input,
 .field select {
   width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   color: var(--text);
   font-size: 1rem;
 }
