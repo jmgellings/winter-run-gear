@@ -242,6 +242,14 @@ app.post("/weather/hourly", async (req, res) => {
       return res.status(400).json({ error: "targetTimeISO is required" });
     }
 
+    // Open-Meteo's default window starts at "today" — a target in the past
+    // (e.g. an older Strava run) needs past_days, or it silently falls back
+    // to today's data instead of the actual requested date.
+    const targetDateOnly = targetTimeISO.slice(0, 10);
+    const todayDateOnly = new Date().toISOString().slice(0, 10);
+    const daysAgo = Math.round((Date.parse(todayDateOnly) - Date.parse(targetDateOnly)) / 86400000);
+    const pastDays = Math.min(92, Math.max(0, daysAgo));
+
     // Open-Meteo: ask for Fahrenheit + mph to match your UI
     const url = "https://api.open-meteo.com/v1/forecast";
     const params = {
@@ -250,7 +258,8 @@ app.post("/weather/hourly", async (req, res) => {
       hourly: "temperature_2m,wind_speed_10m,precipitation,cloud_cover",
       temperature_unit: "fahrenheit",
       wind_speed_unit: "mph",
-      timezone: "auto"
+      timezone: "auto",
+      past_days: pastDays
     };
 
     const response = await axios.get(url, { params });
