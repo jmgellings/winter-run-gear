@@ -61,12 +61,12 @@ function RunFields({ value, onChange, hideDetails = false }) {
     <>
       {!hideDetails && (
         <>
-          <div className="form-grid">
-            <label className="field">
-              Date
-              <input type="date" value={value.date} onChange={(e) => set({ date: e.target.value })} />
-            </label>
+          <label className="field">
+            Date
+            <input type="date" value={value.date} onChange={(e) => set({ date: e.target.value })} />
+          </label>
 
+          <div className="form-grid form-grid-nowrap">
             <label className="field">
               Distance (mi)
               <input
@@ -76,9 +76,7 @@ function RunFields({ value, onChange, hideDetails = false }) {
                 onChange={(e) => set({ distance: e.target.value === "" ? null : Number(e.target.value) })}
               />
             </label>
-          </div>
 
-          <div className="form-grid">
             <label className="field">
               Intensity
               <select value={value.intensity} onChange={(e) => set({ intensity: e.target.value })}>
@@ -87,14 +85,9 @@ function RunFields({ value, onChange, hideDetails = false }) {
                 <option value="hard">hard</option>
               </select>
             </label>
-
-            <label className="field-checkbox">
-              <input type="checkbox" checked={!!value.sunny} onChange={(e) => set({ sunny: e.target.checked })} />
-              Sunny
-            </label>
           </div>
 
-          <div className="form-grid">
+          <div className="form-grid form-grid-3">
             <label className="field">
               Temp (°F)
               <input
@@ -107,6 +100,11 @@ function RunFields({ value, onChange, hideDetails = false }) {
             <label className="field">
               Wind (mph)
               <input type="number" value={value.wind} onChange={(e) => set({ wind: Number(e.target.value) })} />
+            </label>
+
+            <label className="field-checkbox">
+              <input type="checkbox" checked={!!value.sunny} onChange={(e) => set({ sunny: e.target.checked })} />
+              Sunny
             </label>
           </div>
         </>
@@ -407,19 +405,19 @@ export default function App() {
 
   const planDetailFields = (
     <>
-      <label className="field">
-        Distance (mi)
-        <input
-          type="number"
-          step="0.1"
-          value={planForm.distance ?? ""}
-          onChange={(e) =>
-            setPlanForm({ ...planForm, distance: e.target.value === "" ? null : Number(e.target.value) })
-          }
-        />
-      </label>
+      <div className="form-grid form-grid-nowrap">
+        <label className="field">
+          Distance (mi)
+          <input
+            type="number"
+            step="0.1"
+            value={planForm.distance ?? ""}
+            onChange={(e) =>
+              setPlanForm({ ...planForm, distance: e.target.value === "" ? null : Number(e.target.value) })
+            }
+          />
+        </label>
 
-      <div className="form-grid">
         <label className="field">
           Intensity
           <select
@@ -431,18 +429,9 @@ export default function App() {
             <option value="hard">hard</option>
           </select>
         </label>
-
-        <label className="field-checkbox">
-          <input
-            type="checkbox"
-            checked={planForm.sunny}
-            onChange={(e) => setPlanForm({ ...planForm, sunny: e.target.checked })}
-          />
-          Sunny
-        </label>
       </div>
 
-      <div className="form-grid">
+      <div className="form-grid form-grid-3">
         <label className="field">
           Temp (°F)
           <input
@@ -459,6 +448,15 @@ export default function App() {
             value={planForm.wind}
             onChange={(e) => setPlanForm({ ...planForm, wind: Number(e.target.value) })}
           />
+        </label>
+
+        <label className="field-checkbox">
+          <input
+            type="checkbox"
+            checked={planForm.sunny}
+            onChange={(e) => setPlanForm({ ...planForm, sunny: e.target.checked })}
+          />
+          Sunny
         </label>
       </div>
     </>
@@ -665,13 +663,11 @@ export default function App() {
                     </div>
 
                     <div className="run-card-meta">
-                      <span>{r.distance != null ? `${r.distance} mi` : "— mi"}</span>
-                      <span>
-                        {r.temperature}°F
-                        {r.wind ? ` • ${r.wind} mph` : ""}
-                        {r.sunny ? " • ☀️" : ""}
-                      </span>
-                      <span>comfort {r.comfort_rating}/5</span>
+                      <span className="metric">{r.distance != null ? `${r.distance} mi` : "— mi"}</span>
+                      <span className="metric">{r.temperature}°F</span>
+                      {r.wind ? <span className="metric">{r.wind} mph</span> : null}
+                      {r.sunny ? <span className="metric">☀️</span> : null}
+                      <span className="metric">comfort {r.comfort_rating}/5</span>
                     </div>
 
                     {r.clothing?.length ? (
