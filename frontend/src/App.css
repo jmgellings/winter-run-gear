@@ -332,14 +332,6 @@
   flex-shrink: 0;
 }
 
-.intensity-tag {
-  font-size: 0.72em;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-}
-
 .run-cards {
   list-style: none;
   padding: 0;

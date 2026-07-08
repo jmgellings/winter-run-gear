@@ -107,7 +107,9 @@ export default function RunnaImport({
                   <div className="muted">{meta}</div>
                 </div>
                 <div className="workout-action">
-                  <span className="intensity-tag">{e.parsed?.intensity || "easy"}</span>
+                  <span className={`intensity-pill intensity-${e.parsed?.intensity || "easy"}`}>
+                    {e.parsed?.intensity || "easy"}
+                  </span>
                   <button
                     type="button"
                     className={selected ? "btn-primary" : ""}
