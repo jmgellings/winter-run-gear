@@ -22,6 +22,7 @@ export default function StravaImport({ onUseActivity, refreshSignal }) {
   const [activities, setActivities] = useState([]);
   const [err, setErr] = useState("");
   const [selectedId, setSelectedId] = useState(null);
+  const [connected, setConnected] = useState(true); // optimistic until we hear otherwise
 
   async function loadRecent() {
     setErr("");
@@ -34,10 +35,12 @@ export default function StravaImport({ onUseActivity, refreshSignal }) {
         // Not connected yet
         setActivities([]);
         setErr(data?.error || "Strava not connected");
+        setConnected(false);
         return;
       }
       if (!res.ok) throw new Error(data?.error || "Failed to load Strava activities");
 
+      setConnected(true);
       const list = data?.activities || [];
       setActivities(list);
 
@@ -68,14 +71,31 @@ export default function StravaImport({ onUseActivity, refreshSignal }) {
 
   return (
     <div className="card">
-      <div className="card-header">
-        <h2 style={{ margin: 0 }}>Recent Runs (Strava)</h2>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button type="button" onClick={connectStrava}>Connect Strava</button>
-          <button type="button" onClick={loadRecent} disabled={loading}>
-            {loading ? "Loading..." : "Refresh"}
-          </button>
+      <div className="strava-header">
+        <div className="strava-header-top">
+          <h2 style={{ margin: 0 }}>Recent Runs (Strava)</h2>
+          {connected && (
+            <button
+              type="button"
+              className="icon-button"
+              onClick={loadRecent}
+              disabled={loading}
+              aria-label="Refresh"
+              title="Refresh"
+            >
+              {loading ? "…" : "⟳"}
+            </button>
+          )}
         </div>
+
+        {!connected && (
+          <div className="strava-header-actions">
+            <button type="button" onClick={connectStrava}>Connect Strava</button>
+            <button type="button" onClick={loadRecent} disabled={loading}>
+              {loading ? "Loading..." : "Refresh"}
+            </button>
+          </div>
+        )}
       </div>
 
       {err ? <div className="error-text" style={{ marginTop: 8 }}>{err}</div> : null}

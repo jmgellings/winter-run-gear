@@ -405,6 +405,76 @@ export default function App() {
 
   const recentRuns = useMemo(() => runs.slice(0, 10), [runs]);
 
+  const planDetailFields = (
+    <>
+      <div className="form-grid">
+        <label className="field">
+          Date
+          <input
+            type="date"
+            value={planForm.date}
+            onChange={(e) => setPlanForm({ ...planForm, date: e.target.value })}
+          />
+        </label>
+
+        <label className="field">
+          Distance (mi)
+          <input
+            type="number"
+            step="0.1"
+            value={planForm.distance ?? ""}
+            onChange={(e) =>
+              setPlanForm({ ...planForm, distance: e.target.value === "" ? null : Number(e.target.value) })
+            }
+          />
+        </label>
+      </div>
+
+      <div className="form-grid">
+        <label className="field">
+          Intensity
+          <select
+            value={planForm.intensity}
+            onChange={(e) => setPlanForm({ ...planForm, intensity: e.target.value })}
+          >
+            <option value="easy">easy</option>
+            <option value="moderate">moderate</option>
+            <option value="hard">hard</option>
+          </select>
+        </label>
+
+        <label className="field-checkbox">
+          <input
+            type="checkbox"
+            checked={planForm.sunny}
+            onChange={(e) => setPlanForm({ ...planForm, sunny: e.target.checked })}
+          />
+          Sunny
+        </label>
+      </div>
+
+      <div className="form-grid">
+        <label className="field">
+          Temp (°F)
+          <input
+            type="number"
+            value={planForm.temperature}
+            onChange={(e) => setPlanForm({ ...planForm, temperature: Number(e.target.value) })}
+          />
+        </label>
+
+        <label className="field">
+          Wind (mph)
+          <input
+            type="number"
+            value={planForm.wind}
+            onChange={(e) => setPlanForm({ ...planForm, wind: Number(e.target.value) })}
+          />
+        </label>
+      </div>
+    </>
+  );
+
   return (
     <div className="app-container">
       <div className="app-header">
@@ -422,75 +492,7 @@ export default function App() {
           <section className="card">
             <h2>What should I wear?</h2>
 
-            {(!planSource || showPlanDetails) && (
-              <>
-                <div className="form-grid">
-                  <label className="field">
-                    Date
-                    <input
-                      type="date"
-                      value={planForm.date}
-                      onChange={(e) => setPlanForm({ ...planForm, date: e.target.value })}
-                    />
-                  </label>
-
-                  <label className="field">
-                    Distance (mi)
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={planForm.distance ?? ""}
-                      onChange={(e) =>
-                        setPlanForm({ ...planForm, distance: e.target.value === "" ? null : Number(e.target.value) })
-                      }
-                    />
-                  </label>
-                </div>
-
-                <div className="form-grid">
-                  <label className="field">
-                    Intensity
-                    <select
-                      value={planForm.intensity}
-                      onChange={(e) => setPlanForm({ ...planForm, intensity: e.target.value })}
-                    >
-                      <option value="easy">easy</option>
-                      <option value="moderate">moderate</option>
-                      <option value="hard">hard</option>
-                    </select>
-                  </label>
-
-                  <label className="field-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={planForm.sunny}
-                      onChange={(e) => setPlanForm({ ...planForm, sunny: e.target.checked })}
-                    />
-                    Sunny
-                  </label>
-                </div>
-
-                <div className="form-grid">
-                  <label className="field">
-                    Temp (°F)
-                    <input
-                      type="number"
-                      value={planForm.temperature}
-                      onChange={(e) => setPlanForm({ ...planForm, temperature: Number(e.target.value) })}
-                    />
-                  </label>
-
-                  <label className="field">
-                    Wind (mph)
-                    <input
-                      type="number"
-                      value={planForm.wind}
-                      onChange={(e) => setPlanForm({ ...planForm, wind: Number(e.target.value) })}
-                    />
-                  </label>
-                </div>
-              </>
-            )}
+            {!planSource && planDetailFields}
 
             <RunnaImport
               onUseWorkout={(plan, meta) => {
@@ -523,23 +525,32 @@ export default function App() {
             </label>
 
             {planSource && (
-              <button type="button" className="link-button" onClick={() => setShowPlanDetails((s) => !s)}>
+              <button
+                type="button"
+                className="link-button details-toggle"
+                onClick={() => setShowPlanDetails((s) => !s)}
+              >
                 {showPlanDetails ? "Hide details" : "Edit details"}
               </button>
             )}
+
+            {planSource && showPlanDetails && planDetailFields}
 
             <button className="btn-primary" type="button" onClick={oneClickRecommend} style={{ width: "100%" }}>
               Get Recommendation
             </button>
 
-            {weather && (
+            {recommendation && (
               <div className="card-inset">
-                <div className="muted">Forecast hour: {formatForecastHour(weather.chosenTime)}</div>
+                <div className="muted">
+                  {weather ? `Forecast hour: ${formatForecastHour(weather.chosenTime)}` : "Conditions used"}
+                </div>
                 <div className="weather-temp" style={{ marginTop: 4 }}>
-                  {Math.round(weather.temperatureF)}°F
+                  {Math.round(weather ? weather.temperatureF : planForm.temperature)}°F
                 </div>
                 <div className="muted">
-                  wind {Math.round(weather.windMph)} mph • {weather.sunny ? "sunny" : "cloudy/precip"}
+                  wind {Math.round(weather ? weather.windMph : planForm.wind)} mph •{" "}
+                  {(weather ? weather.sunny : planForm.sunny) ? "sunny" : "cloudy/precip"}
                 </div>
               </div>
             )}
@@ -607,7 +618,11 @@ export default function App() {
 
             <form onSubmit={submitRun} style={{ display: "grid", gap: 10 }}>
               {logSource && (
-                <button type="button" className="link-button" onClick={() => setShowLogDetails((s) => !s)}>
+                <button
+                  type="button"
+                  className="link-button details-toggle"
+                  onClick={() => setShowLogDetails((s) => !s)}
+                >
                   {showLogDetails ? "Hide details" : "Edit details"}
                 </button>
               )}
