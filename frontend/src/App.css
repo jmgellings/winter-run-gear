@@ -100,14 +100,6 @@
   text-decoration: underline;
 }
 
-.details-toggle {
-  display: block;
-  width: 100%;
-  text-align: center;
-  padding: 10px 0;
-  margin: 4px 0;
-}
-
 .strava-header {
   display: flex;
   flex-direction: column;

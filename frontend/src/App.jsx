@@ -44,11 +44,9 @@ function formatRunDate(dateStr) {
   });
 }
 
-// The fields for an actual logged run: what you wore, how it felt. Shared by the
-// Log tab's create form and the edit modal. When `hideDetails` is set (Log tab only,
-// once a Strava run has been selected), the auto-filled date/distance/conditions rows
-// are skipped and only comfort/notes/clothing show.
-function RunFields({ value, onChange, hideDetails = false }) {
+// The fields for an actual logged run: what you wore, how it felt. Shared by
+// the Log tab's create form and the edit modal.
+function RunFields({ value, onChange }) {
   const set = (patch) => onChange({ ...value, ...patch });
 
   const toggleClothing = (item) => {
@@ -59,56 +57,52 @@ function RunFields({ value, onChange, hideDetails = false }) {
 
   return (
     <>
-      {!hideDetails && (
-        <>
-          <label className="field">
-            Date
-            <input type="date" value={value.date} onChange={(e) => set({ date: e.target.value })} />
-          </label>
+      <label className="field">
+        Date
+        <input type="date" value={value.date} onChange={(e) => set({ date: e.target.value })} />
+      </label>
 
-          <div className="form-grid form-grid-nowrap">
-            <label className="field">
-              Distance (mi)
-              <input
-                type="number"
-                step="0.1"
-                value={value.distance ?? ""}
-                onChange={(e) => set({ distance: e.target.value === "" ? null : Number(e.target.value) })}
-              />
-            </label>
+      <div className="form-grid form-grid-nowrap">
+        <label className="field">
+          Distance (mi)
+          <input
+            type="number"
+            step="0.1"
+            value={value.distance ?? ""}
+            onChange={(e) => set({ distance: e.target.value === "" ? null : Number(e.target.value) })}
+          />
+        </label>
 
-            <label className="field">
-              Intensity
-              <select value={value.intensity} onChange={(e) => set({ intensity: e.target.value })}>
-                <option value="easy">easy</option>
-                <option value="moderate">moderate</option>
-                <option value="hard">hard</option>
-              </select>
-            </label>
-          </div>
+        <label className="field">
+          Intensity
+          <select value={value.intensity} onChange={(e) => set({ intensity: e.target.value })}>
+            <option value="easy">easy</option>
+            <option value="moderate">moderate</option>
+            <option value="hard">hard</option>
+          </select>
+        </label>
+      </div>
 
-          <div className="form-grid form-grid-3">
-            <label className="field">
-              Temp (°F)
-              <input
-                type="number"
-                value={value.temperature}
-                onChange={(e) => set({ temperature: Number(e.target.value) })}
-              />
-            </label>
+      <div className="form-grid form-grid-3">
+        <label className="field">
+          Temp (°F)
+          <input
+            type="number"
+            value={value.temperature}
+            onChange={(e) => set({ temperature: Number(e.target.value) })}
+          />
+        </label>
 
-            <label className="field">
-              Wind (mph)
-              <input type="number" value={value.wind} onChange={(e) => set({ wind: Number(e.target.value) })} />
-            </label>
+        <label className="field">
+          Wind (mph)
+          <input type="number" value={value.wind} onChange={(e) => set({ wind: Number(e.target.value) })} />
+        </label>
 
-            <label className="field-checkbox">
-              <input type="checkbox" checked={!!value.sunny} onChange={(e) => set({ sunny: e.target.checked })} />
-              Sunny
-            </label>
-          </div>
-        </>
-      )}
+        <label className="field-checkbox">
+          <input type="checkbox" checked={!!value.sunny} onChange={(e) => set({ sunny: e.target.checked })} />
+          Sunny
+        </label>
+      </div>
 
       <label className="field">
         Comfort (1=freezing, 3=good, 5=too hot)
@@ -166,8 +160,6 @@ export default function App() {
   const [editForm, setEditForm] = useState(null); // holds the run being edited
 
   // Plan tab: what should I wear for an upcoming run?
-  const [planSource, setPlanSource] = useState(null); // which Runna workout this came from
-  const [showPlanDetails, setShowPlanDetails] = useState(false);
   const [planForm, setPlanForm] = useState(() => {
     const { date, time } = nextHourParts();
     return {
@@ -184,8 +176,6 @@ export default function App() {
   const [recommendation, setRecommendation] = useState(null);
 
   // Log tab: what did I actually wear, and how did it feel?
-  const [logSource, setLogSource] = useState(null); // which Strava activity this came from
-  const [showLogDetails, setShowLogDetails] = useState(false);
   const [stravaRefreshTick, setStravaRefreshTick] = useState(0);
 
   function defaultLogForm() {
@@ -356,8 +346,6 @@ export default function App() {
 
       await refreshRuns();
       setForm(defaultLogForm());
-      setLogSource(null);
-      setShowLogDetails(false);
       setStravaRefreshTick((t) => t + 1);
       alert("Saved!");
     } finally {
@@ -483,8 +471,6 @@ export default function App() {
           <section className="card">
             <h2>What should I wear?</h2>
 
-            {!planSource && planDetailFields}
-
             <RunnaImport
               onUseWorkout={(plan, meta) => {
                 const workoutDate =
@@ -497,8 +483,6 @@ export default function App() {
                   date: workoutDate ?? f.date
                 }));
 
-                setPlanSource(plan.title);
-                setShowPlanDetails(false);
                 setRecommendation(null);
                 setWeather(null);
               }}
@@ -526,17 +510,7 @@ export default function App() {
               </label>
             </div>
 
-            {planSource && (
-              <button
-                type="button"
-                className="link-button details-toggle"
-                onClick={() => setShowPlanDetails((s) => !s)}
-              >
-                {showPlanDetails ? "Hide details" : "Edit details"}
-              </button>
-            )}
-
-            {planSource && showPlanDetails && planDetailFields}
+            {planDetailFields}
 
             <button
               className="btn-primary"
@@ -605,9 +579,6 @@ export default function App() {
                 strava_activity_id: String(a.id)
               }));
 
-              setLogSource(a.name || "Run");
-              setShowLogDetails(false);
-
               const weather = await fetchWeatherForActivity(a);
               if (weather) {
                 setForm((f) => ({
@@ -624,17 +595,7 @@ export default function App() {
             <h2>Log a run</h2>
 
             <form onSubmit={submitRun} style={{ display: "grid", gap: 10 }}>
-              {logSource && (
-                <button
-                  type="button"
-                  className="link-button details-toggle"
-                  onClick={() => setShowLogDetails((s) => !s)}
-                >
-                  {showLogDetails ? "Hide details" : "Edit details"}
-                </button>
-              )}
-
-              <RunFields value={form} onChange={setForm} hideDetails={logSource && !showLogDetails} />
+              <RunFields value={form} onChange={setForm} />
 
               <div className="actions-row">
                 <button className="btn-primary" disabled={loading} type="submit" style={{ width: "100%" }}>
