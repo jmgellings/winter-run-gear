@@ -153,6 +153,10 @@
   gap: 10px;
 }
 
+.form-grid-3 {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+}
+
 .form-grid + .form-grid {
   margin-top: 10px;
 }
@@ -164,6 +168,10 @@
 
   .form-grid-nowrap {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .form-grid-3 {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
   }
 
   /* Native date/time pickers (esp. iOS Safari) render wider than other
