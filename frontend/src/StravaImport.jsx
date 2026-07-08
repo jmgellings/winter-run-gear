@@ -125,9 +125,11 @@ export default function StravaImport({ onUseActivity, refreshSignal }) {
                 <div>
                   <div><strong>{a.name || "Run"}</strong></div>
                   <div className="muted">
-                    {prettyWhen(a.start_date_local)} •{" "}
-                    {miles != null ? `${miles.toFixed(2)} mi` : "—"} •{" "}
-                    {durationMin != null ? `${durationMin} min` : "—"}
+                    <span className="metric">{prettyWhen(a.start_date_local)}</span>{" "}
+                    •{" "}
+                    <span className="metric">{miles != null ? `${miles.toFixed(2)} mi` : "—"}</span>{" "}
+                    •{" "}
+                    <span className="metric">{durationMin != null ? `${durationMin} min` : "—"}</span>
                   </div>
                 </div>
                 <button

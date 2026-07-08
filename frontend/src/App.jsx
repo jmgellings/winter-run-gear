@@ -61,7 +61,7 @@ function RunFields({ value, onChange, hideDetails = false }) {
     <>
       {!hideDetails && (
         <>
-          <div className="form-grid">
+          <div className="form-grid form-grid-nowrap">
             <label className="field">
               Date
               <input type="date" value={value.date} onChange={(e) => set({ date: e.target.value })} />
@@ -665,13 +665,11 @@ export default function App() {
                     </div>
 
                     <div className="run-card-meta">
-                      <span>{r.distance != null ? `${r.distance} mi` : "— mi"}</span>
-                      <span>
-                        {r.temperature}°F
-                        {r.wind ? ` • ${r.wind} mph` : ""}
-                        {r.sunny ? " • ☀️" : ""}
-                      </span>
-                      <span>comfort {r.comfort_rating}/5</span>
+                      <span className="metric">{r.distance != null ? `${r.distance} mi` : "— mi"}</span>
+                      <span className="metric">{r.temperature}°F</span>
+                      {r.wind ? <span className="metric">{r.wind} mph</span> : null}
+                      {r.sunny ? <span className="metric">☀️</span> : null}
+                      <span className="metric">comfort {r.comfort_rating}/5</span>
                     </div>
 
                     {r.clothing?.length ? (
