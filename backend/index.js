@@ -141,11 +141,12 @@ function baselineOutfit(feelsLike) {
   return BASELINE_BANDS.find((band) => feelsLike >= band.min).items;
 }
 
-// Recommendation: blend a calibrated baseline outfit with whatever your own
-// logged history supports, weighted toward well-calibrated (comfort near 3)
-// and recent runs rather than just "highest comfort_rating" (which used to
-// rank "too hot" runs above "just right" ones -- comfort is U-shaped, not
-// linear).
+// Recommendation: once there's enough logged history for a temp/wind band,
+// your own data fully drives the answer, weighted toward well-calibrated
+// (comfort near 3) and recent runs rather than just "highest comfort_rating"
+// (which used to rank "too hot" runs above "just right" ones -- comfort is
+// U-shaped, not linear). The calibrated baseline table is only a cold-start
+// fallback for bands with too little history to trust yet.
 app.get("/recommendation", (req, res) => {
   const temp = Number(req.query.temp);
   const wind = req.query.wind ? Number(req.query.wind) : 0;
@@ -224,25 +225,36 @@ app.get("/recommendation", (req, res) => {
         }
       }
 
-      // Layer in anything your own history strongly supports (worn on at
-      // least half the weighted matches) that the baseline doesn't already
-      // cover -- e.g. if you personally always add a buff. We only add on
-      // top of the baseline for now; we don't yet remove baseline items
-      // just because history disagrees.
+      // Once there's enough history (>=3 similar runs), trust it fully --
+      // both presence AND absence are signal at that point (if none of your
+      // last several similar runs included gloves, that's real evidence you
+      // don't need them, not just missing data). Baseline is a cold-start
+      // fallback only, not a permanent floor; it's used below only if there
+      // isn't enough history yet, or if history is too inconsistent for
+      // anything to clear the 50% bar.
       const enoughData = scoredRuns.length >= 3;
-      const recommended = [...baseline];
+      let recommended = baseline;
+      let usedHistory = false;
+
       if (enoughData) {
-        for (const [item, weight] of Object.entries(weightedCounts)) {
-          if (weight / totalWeight >= 0.5 && !recommended.includes(item)) recommended.push(item);
+        const fromHistory = Object.entries(weightedCounts)
+          .filter(([, weight]) => weight / totalWeight >= 0.5)
+          .map(([item]) => item);
+
+        if (fromHistory.length) {
+          recommended = fromHistory;
+          usedHistory = true;
         }
       }
 
       res.json({
         basis: scoredRuns.slice(0, 5),
         recommended,
-        note: enoughData
-          ? `Based on ${scoredRuns.length} similar run(s) (feels like ${Math.round(targetFeelsLike)}°F) plus a starting-point baseline.`
-          : `Only ${scoredRuns.length} similar run(s) logged so far -- showing a starting-point baseline for ${Math.round(targetFeelsLike)}°F (feels like) until there's more history.`
+        note: usedHistory
+          ? `Based on ${scoredRuns.length} of your own similar run(s) (feels like ${Math.round(targetFeelsLike)}°F).`
+          : enoughData
+            ? `${scoredRuns.length} similar run(s) logged, but clothing was too inconsistent to call -- showing a starting-point baseline for ${Math.round(targetFeelsLike)}°F (feels like) instead.`
+            : `Only ${scoredRuns.length} similar run(s) logged so far -- showing a starting-point baseline for ${Math.round(targetFeelsLike)}°F (feels like) until there's more history.`
       });
     });
   });
