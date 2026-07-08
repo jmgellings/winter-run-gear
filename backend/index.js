@@ -101,9 +101,54 @@ app.get("/runs", (req, res) => {
   );
 });
 
-// Recommendation: find similar temps (+/- 5F), pick best comfort, return common clothing
+// Wind meaningfully increases how cold a run feels; fold it into a single
+// "feels like" number so matching/baseline bands don't have to treat
+// temperature and wind as separate dimensions. The 3°F knock for wind > 7mph
+// is calibrated against a real remembered example (40°F + wind > 7mph wore
+// the same as a plain 37°F day) -- not a general wind-chill formula.
+function feelsLikeTemp({ temperature, wind }) {
+  let feelsLike = temperature;
+  if ((wind ?? 0) > 7) feelsLike -= 3;
+  return feelsLike;
+}
+
+// Starting-point outfit by feels-like temperature, for when there isn't
+// enough (or any) logged history yet. Calibrated against remembered
+// examples at 40/37/35/20°F; bands without a direct example (24-30°F) are
+// an interpolated best guess and may need adjusting once real data exists.
+const BASELINE_BANDS = [
+  { min: 39, items: ["T-Shirt", "Shorts"] },
+  { min: 36, items: ["T-Shirt", "Shorts", "Thin Gloves"] },
+  { min: 30, items: ["Long Shirt", "Shorts", "Thin Gloves"] },
+  { min: 24, items: ["Long Shirt", "Shorts", "Long Tights", "Thin Gloves", "Beanie"] },
+  {
+    min: -Infinity,
+    items: [
+      "Long Shirt",
+      "Vest",
+      "Shorts",
+      "Long Tights",
+      "Sweatpants",
+      "Thin Gloves",
+      "Thick Gloves",
+      "Beanie",
+      "Gaiter/Buff"
+    ]
+  }
+];
+
+function baselineOutfit(feelsLike) {
+  return BASELINE_BANDS.find((band) => feelsLike >= band.min).items;
+}
+
+// Recommendation: blend a calibrated baseline outfit with whatever your own
+// logged history supports, weighted toward well-calibrated (comfort near 3)
+// and recent runs rather than just "highest comfort_rating" (which used to
+// rank "too hot" runs above "just right" ones -- comfort is U-shaped, not
+// linear).
 app.get("/recommendation", (req, res) => {
   const temp = Number(req.query.temp);
+  const wind = req.query.wind ? Number(req.query.wind) : 0;
   const sunny = req.query.sunny === "1" ? 1 : 0;
 
   const distance = req.query.distance ? Number(req.query.distance) : null;
@@ -111,11 +156,13 @@ app.get("/recommendation", (req, res) => {
 
   if (Number.isNaN(temp)) return res.status(400).json({ error: "temp is required" });
 
-  const params = [temp, sunny];
-  let where = `
-    WHERE ABS(temperature - ?) <= 5
-      AND (sunny IS NULL OR sunny = ?)
-  `;
+  const targetFeelsLike = feelsLikeTemp({ temperature: temp, wind });
+  const baseline = baselineOutfit(targetFeelsLike);
+
+  // Widen the SQL-side window since the real similarity check (feels-like,
+  // which needs each candidate's own wind) happens in JS below.
+  const params = [temp];
+  let where = `WHERE ABS(temperature - ?) <= 10`;
 
   if (distance !== null && !Number.isNaN(distance)) {
     // within ±20% distance
@@ -128,55 +175,77 @@ app.get("/recommendation", (req, res) => {
     params.push(intensity);
   }
 
-  db.all(
-    `SELECT * FROM runs
-     ${where}
-     ORDER BY comfort_rating DESC, date DESC
-     LIMIT 10`,
-    params,
-    (err, runs) => {
-      if (err) return res.status(500).json({ error: err.message });
-      if (!runs.length) return res.json({ basis: [], recommended: [], note: "No similar runs yet." });
+  db.all(`SELECT * FROM runs ${where}`, params, (err, candidates) => {
+    if (err) return res.status(500).json({ error: err.message });
 
-      // ...keep your existing clothing lookup + counting logic here...
-      const ids = runs.map(r => r.id);
-      const placeholders = ids.map(() => "?").join(",");
+    const matched = candidates
+      .filter((r) => r.sunny === null || r.sunny === sunny)
+      .map((r) => ({ ...r, feelsLike: feelsLikeTemp({ temperature: r.temperature, wind: r.wind }) }))
+      .filter((r) => Math.abs(r.feelsLike - targetFeelsLike) <= 5)
+      .sort((a, b) => Math.abs(a.comfort_rating - 3) - Math.abs(b.comfort_rating - 3) || new Date(b.date) - new Date(a.date))
+      .slice(0, 10);
 
-      db.all(
-        `SELECT run_id, item FROM run_clothing WHERE run_id IN (${placeholders})`,
-        ids,
-        (err2, rows) => {
-          if (err2) return res.status(500).json({ error: err2.message });
-
-          const clothingByRun = {};
-          for (const row of rows) {
-            clothingByRun[row.run_id] ??= [];
-            clothingByRun[row.run_id].push(row.item);
-          }
-
-          const scoredRuns = runs.map(r => ({ ...r, clothing: clothingByRun[r.id] ?? [] }));
-
-          const counts = {};
-          for (const r of scoredRuns) {
-            for (const item of r.clothing) counts[item] = (counts[item] || 0) + 1;
-          }
-
-          const recommended = Object.entries(counts)
-            .sort((a, b) => b[1] - a[1])
-            .map(([item]) => item);
-
-          res.json({
-            basis: scoredRuns.slice(0, 5),
-            recommended,
-            note: `Based on ${scoredRuns.length} similar run(s) within ±5°F` +
-              (distance !== null ? ` and ~same distance` : ``) +
-              (intensity ? ` and intensity=${intensity}` : ``) +
-              `.`
-          });
-        }
-      );
+    if (!matched.length) {
+      return res.json({
+        basis: [],
+        recommended: baseline,
+        note: `No similar logged runs yet — showing a starting-point suggestion for ${Math.round(targetFeelsLike)}°F (feels like).`
+      });
     }
-  );
+
+    const ids = matched.map((r) => r.id);
+    const placeholders = ids.map(() => "?").join(",");
+
+    db.all(`SELECT run_id, item FROM run_clothing WHERE run_id IN (${placeholders})`, ids, (err2, rows) => {
+      if (err2) return res.status(500).json({ error: err2.message });
+
+      const clothingByRun = {};
+      for (const row of rows) {
+        clothingByRun[row.run_id] ??= [];
+        clothingByRun[row.run_id].push(row.item);
+      }
+
+      const scoredRuns = matched.map((r) => ({ ...r, clothing: clothingByRun[r.id] ?? [] }));
+      const now = Date.now();
+
+      // Weight each run's vote by recency and by how close to a "just
+      // right" comfort rating it was, so one old, way-too-hot run doesn't
+      // outvote several recent, well-calibrated ones.
+      const weightedCounts = {};
+      let totalWeight = 0;
+      for (const r of scoredRuns) {
+        const daysAgo = (now - new Date(r.date).getTime()) / 86400000;
+        const recencyWeight = 1 / (1 + daysAgo / 180);
+        const comfortWeight = 1 - Math.abs(r.comfort_rating - 3) / 2;
+        const weight = Math.max(0.05, recencyWeight * comfortWeight);
+        totalWeight += weight;
+        for (const item of r.clothing) {
+          weightedCounts[item] = (weightedCounts[item] || 0) + weight;
+        }
+      }
+
+      // Layer in anything your own history strongly supports (worn on at
+      // least half the weighted matches) that the baseline doesn't already
+      // cover -- e.g. if you personally always add a buff. We only add on
+      // top of the baseline for now; we don't yet remove baseline items
+      // just because history disagrees.
+      const enoughData = scoredRuns.length >= 3;
+      const recommended = [...baseline];
+      if (enoughData) {
+        for (const [item, weight] of Object.entries(weightedCounts)) {
+          if (weight / totalWeight >= 0.5 && !recommended.includes(item)) recommended.push(item);
+        }
+      }
+
+      res.json({
+        basis: scoredRuns.slice(0, 5),
+        recommended,
+        note: enoughData
+          ? `Based on ${scoredRuns.length} similar run(s) (feels like ${Math.round(targetFeelsLike)}°F) plus a starting-point baseline.`
+          : `Only ${scoredRuns.length} similar run(s) logged so far -- showing a starting-point baseline for ${Math.round(targetFeelsLike)}°F (feels like) until there's more history.`
+      });
+    });
+  });
 });
 
 // POST /runna/upcoming
