@@ -166,11 +166,13 @@
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
   }
 
-  /* Native date/time pickers (esp. iOS Safari) render wider than other
-     inputs and don't shrink as readily -- give them a smaller font and
-     tighter padding so two fit on one row without clipping or overlap. */
+  /* iOS Safari's native date/time pickers don't reliably respect
+     width:100% -- they can paint wider than their box regardless of
+     percentage-based sizing, which clips or overlaps neighbors. An
+     explicit fixed width (not a percentage) is more reliably honored. */
   .form-grid-nowrap input[type="date"],
   .form-grid-nowrap input[type="time"] {
+    width: 145px;
     padding-left: 6px;
     padding-right: 6px;
     font-size: 0.85rem;
